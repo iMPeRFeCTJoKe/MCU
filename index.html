@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Хронология КВМ — Интерактивная таблица</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --primary: #e62429;
+    --primary-hover: #c9181d;
+    --dark: #0f172a;
+    --text-main: #334155;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --bg-page: #f8fafc;
+    --bg-card: #ffffff;
+    --row-hover: #f1f5f9;
+    --row-done: #f8fafc;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text-main);
+    background-color: var(--bg-page);
+    margin: 0;
+    padding: 24px;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    overflow: hidden;
+  }
+
+  /* Панель управления */
+  .toolbar {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: #fff;
+  }
+
+  .title-group h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .title-group .badge {
+    background: var(--primary);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 260px;
+  }
+
+  .progress-bar-bg {
+    flex-grow: 1;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--primary);
+    transition: width 0.25s ease;
+  }
+
+  .progress-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  /* Фильтры и поиск */
+  .filter-bar {
+    padding: 10px 24px;
+    background: var(--bg-page);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .filter-tabs {
+    display: flex;
+    gap: 6px;
+  }
+
+  .tab-btn {
+    border: 1px solid var(--border);
+    background: #fff;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-main);
+    cursor: pointer;
+  }
+
+  .tab-btn.active {
+    background: var(--dark);
+    color: #fff;
+    border-color: var(--dark);
+  }
+
+  .search-input {
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    outline: none;
+    width: 200px;
+  }
+
+  /* Таблица */
+  .table-wrapper {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+
+  thead th {
+    background: #f1f5f9;
+    color: var(--dark);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background-color 0.15s;
+  }
+
+  tbody tr:hover {
+    background-color: var(--row-hover);
+  }
+
+  tbody tr.checked {
+    background-color: var(--row-done);
+    color: #94a3b8;
+  }
+
+  tbody tr.checked .col-title {
+    text-decoration: line-through;
+    color: #94a3b8;
+  }
+
+  td {
+    padding: 8px 12px;
+    vertical-align: middle;
+  }
+
+  /* Спецификация колонок */
+  .col-check { width: 36px; text-align: center; }
+  .col-num { width: 44px; font-weight: 600; color: var(--text-muted); text-align: center; }
+  .col-title { width: 260px; font-weight: 600; color: var(--dark); }
+  .col-year { width: 110px; color: var(--text-muted); font-size: 12px; }
+  .col-desc { font-size: 12px; }
+
+  /* Теги категорий */
+  .tag {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .tag-movie { background: #fee2e2; color: #991b1b; }
+  .tag-series { background: #e0e7ff; color: #3730a3; }
+  .tag-special { background: #fef3c7; color: #92400e; }
+  .tag-fox { background: #f1f5f9; color: #475569; }
+
+  /* Разделители фаз/саг */
+  .section-row td {
+    background: #f8fafc;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--dark);
+    padding: 8px 12px;
+    border-top: 2px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Блок подсказок */
+  .footer-box {
+    padding: 16px 24px;
+    background: #f8fafc;
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+  .footer-box strong { color: var(--dark); }
+
+  /* Режим печати */
+  @media print {
+    body { padding: 0; background: #fff; }
+    .container { border: none; box-shadow: none; max-width: 100%; }
+    .filter-bar, .search-input, .tab-btn { display: none !important; }
+    .toolbar { border-bottom: 2px solid var(--primary); padding: 10px 0; }
+    thead th { background: #f1f5f9 !important; -webkit-print-color-adjust: exact; }
+    td, th { padding: 4px 6px; font-size: 10px; }
+    .section-row td { font-size: 10px; padding: 4px 6px; }
+    tr { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  
+  <!-- Верхняя панель -->
+  <div class="toolbar">
+    <div class="title-group">
+      <h1>Хронологический список КВМ <span class="badge">MCU Guide</span></h1>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div class="progress-text" id="progressText">0 / 47</div>
+    </div>
+  </div>
+
+  <!-- Панель фильтрации -->
+  <div class="filter-bar">
+    <div class="filter-tabs">
+      <button class="tab-btn active" onclick="filterCategory('all', this)">Все</button>
+      <button class="tab-btn" onclick="filterCategory('fox', this)">Люди Икс (Fox)</button>
+      <button class="tab-btn" onclick="filterCategory('infinity', this)">Сага Бесконечности</button>
+      <button class="tab-btn" onclick="filterCategory('multiverse', this)">Сага Мультивселенной</button>
+    </div>
+    <input type="text" id="searchInput" class="search-input" placeholder="Поиск проекта..." onkeyup="searchProjects()">
+  </div>
+
+  <!-- Основная интерактивная таблица -->
+  <div class="table-wrapper">
+    <table id="mcuTable">
+      <thead>
+        <tr>
+          <th class="col-check">✓</th>
+          <th class="col-num">№</th>
+          <th class="col-title">Название проекта</th>
+          <th class="col-year">Таймлайн</th>
+          <th class="col-desc">Сюжетная связка и значение</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- БЛОК FOX -->
+        <tr class="section-row" data-cat="fox"><td colspan="5">0. Вселенная Людей Икс (Fox) — Наследие Мультивселенной</td></tr>
+        <tr data-cat="fox">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">01</td>
+          <td class="col-title"><span class="tag tag-fox">Fox</span>Люди Икс</td>
+          <td class="col-year">2000 г.</td>
+          <td class="col-desc">Знакомство с Росомахой (Хью Джекман), Ксавьером и миром мутантов.</td>
+        </tr>
+        <tr data-cat="fox">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">02</td>
+          <td class="col-title"><span class="tag tag-fox">Fox</span>Люди Икс 2</td>
+          <td class="col-year">2003 г.</td>
+          <td class="col-desc">Закрепление состава перед интеграцией в КВМ через Пустоту в «Дэдпуле и Росомахе».</td>
+        </tr>
+
+        <!-- САГА БЕСКОНЕЧНОСТИ -->
+        <tr class="section-row" data-cat="infinity"><td colspan="5">1. Сага Бесконечности (1942–2023)</td></tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">03</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Первый мститель</td>
+          <td class="col-year">1942–1945</td>
+          <td class="col-desc">Рождение Стива Роджерса, Тессеракт (Камень Пространства).</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">04</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Капитан Марвел</td>
+          <td class="col-year">1995 г.</td>
+          <td class="col-desc">Кэрол Дэнверс, истоки инициативы «Мстители» и пейджера Ника Фьюри.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">05</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Железный человек</td>
+          <td class="col-year">2010 г.</td>
+          <td class="col-desc">Старт современной эры супергероев, сборка костюма Mark I–III.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">06</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Железный человек 2</td>
+          <td class="col-year">2011 г.</td>
+          <td class="col-desc">События «Большой недели Фьюри», дебют Наташи Романофф.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">07</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Невероятный Халк</td>
+          <td class="col-year">2011 г.</td>
+          <td class="col-desc">Происхождение Брюса Беннера, генерал Росс и Мерзость.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">08</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Тор</td>
+          <td class="col-year">2011 г.</td>
+          <td class="col-desc">Изгнание Тора на Землю, предательство Локи, Соколиный глаз.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">09</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Мстители</td>
+          <td class="col-year">2012 г.</td>
+          <td class="col-desc">Битва за Нью-Йорк, первый официальный сбор команды.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">10</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Железный человек 3</td>
+          <td class="col-year">Дек. 2012</td>
+          <td class="col-desc">ПТСР Тони Старка после портала и уничтожение прототипов.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">11</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Тор 2: Царство тьмы</td>
+          <td class="col-year">2013 г.</td>
+          <td class="col-desc">Камень Реальности (Эфир), передача его Коллекционеру.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">12</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Первый мститель: Другая война</td>
+          <td class="col-year">Весна 2014</td>
+          <td class="col-desc">Развал Щ.И.Т., внедрение «Гидры», возвращение Зимнего солдата.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">13</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Стражи Галактики</td>
+          <td class="col-year">2014 г.</td>
+          <td class="col-desc">Космический рубеж, Сфера (Камень Силы), появление Таноса.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">14</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Стражи Галактики. Часть 2</td>
+          <td class="col-year">2014 г.</td>
+          <td class="col-desc">Раскрытие происхождения Питера Квилла и появление Эго.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">15</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Мстители: Эра Альтрона</td>
+          <td class="col-year">Весна 2015</td>
+          <td class="col-desc">Камень Разума, рождение Вижна, появление Ванды.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">16</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Человек-муравей</td>
+          <td class="col-year">Лето 2015</td>
+          <td class="col-desc">Скотт Лэнг, частицы Пима и основы Квантового мира.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">17</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Первый мститель: Противостояние</td>
+          <td class="col-year">Весна 2016</td>
+          <td class="col-desc">Заковианский договор, раскол команды, дебют Т'Чаллы и Паука.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">18</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Чёрная Вдова</td>
+          <td class="col-year">2016 г.</td>
+          <td class="col-desc">Арка Наташи в бегах, Красная комната, ввод Елены Беловой.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">19</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Чёрная Пантера</td>
+          <td class="col-year">2016 г.</td>
+          <td class="col-desc">Коронация Т'Чаллы, открытие ресурсов Ваканды миру.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">20</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Человек-паук: Возвращение домой</td>
+          <td class="col-year">Осень 2016</td>
+          <td class="col-desc">Питер Паркер балансирует между школой и уличным героизмом.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">21</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Доктор Стрэндж</td>
+          <td class="col-year">2016–2017</td>
+          <td class="col-desc">Глаз Агамотто (Камень Времени), становление Верховного чародея.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">22</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Тор: Рагнарёк</td>
+          <td class="col-year">Конец 2017</td>
+          <td class="col-desc">Разрушение Асгарда; финал стыкуется с кораблём Таноса.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">23</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Человек-муравей и Оса</td>
+          <td class="col-year">Весна 2018</td>
+          <td class="col-desc">Исследования Квантового мира (основной сюжет до Щелчка).</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">24</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Мстители: Война бесконечности</td>
+          <td class="col-year">Весна 2018</td>
+          <td class="col-desc">Сбор Таносом шести Камней Бесконечности и Щелчок.</td>
+        </tr>
+        <tr data-cat="infinity">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">25</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Мстители: Финал</td>
+          <td class="col-year">2018 / 2023</td>
+          <td class="col-desc">Хрононалёт через Квантовый мир, победа над Таносом и Скачок.</td>
+        </tr>
+
+        <!-- САГА МУЛЬТИВСЕЛЕННОЙ -->
+        <tr class="section-row" data-cat="multiverse"><td colspan="5">2. Сага Мультивселенной (2023–2026)</td></tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">26</td>
+          <td class="col-title"><span class="tag tag-special">Архив</span>Архив TVA: Стив Роджерс</td>
+          <td class="col-year">Вне времени</td>
+          <td class="col-desc">Фиксация таймлайна Стива в УВИ после возврата Камней. Мост к «Локи».</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">27</td>
+          <td class="col-title"><span class="tag tag-series">Сериал</span>Локи (1–2 сезоны)</td>
+          <td class="col-year">Вне времени</td>
+          <td class="col-desc">Основы Мультивселенной, устройство УВИ (TVA) и Пустота.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">28</td>
+          <td class="col-title"><span class="tag tag-series">Сериал</span>Ванда/Вижн</td>
+          <td class="col-year">Ноябрь 2023</td>
+          <td class="col-desc">Трансформация Ванды перед «Стрэнджем 2», силы Моники Рамбо.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">29</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Шан-Чи и легенда 10 колец</td>
+          <td class="col-year">Весна 2024</td>
+          <td class="col-desc">Ввод персонажа, магия Та Ло и сигнальный маяк колец.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">30</td>
+          <td class="col-title"><span class="tag tag-series">Сериал</span>Сокол и Зимний солдат</td>
+          <td class="col-year">Весна 2024</td>
+          <td class="col-desc">Сэм принимает щит Кэпа; ввод Джона Уокера и де Фонтейн.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">31</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Человек-паук: Вдали от дома</td>
+          <td class="col-year">Лето 2024</td>
+          <td class="col-desc">Жизнь после Скачка, раскрытие тайны личности Питера Паркера.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">32</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Человек-паук: Нет пути домой</td>
+          <td class="col-year">Осень 2024</td>
+          <td class="col-desc">Разлом Мультивселенной, заклинание забвения, перезагрузка Питера.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">33</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Вечные</td>
+          <td class="col-year">Конец 2024</td>
+          <td class="col-desc">Пробуждение Целестиала Тиамута в Индийском океане.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">34</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Доктор Стрэндж 2</td>
+          <td class="col-year">Начало 2025</td>
+          <td class="col-desc">Сиквел «Ванда/Вижн», Америка Чавес, концепция инкурсий миров.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">35</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Чёрная Пантера: Ваканда навеки</td>
+          <td class="col-year">Весна 2025</td>
+          <td class="col-desc">Шури принимает мантию, Рири Уильямс, геополитика и Талокан.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">36</td>
+          <td class="col-title"><span class="tag tag-series">Сериал</span>Мисс Марвел</td>
+          <td class="col-year">Осень 2025</td>
+          <td class="col-desc">Происхождение браслетов Камалы Хан перед фильмом «Марвелы».</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">37</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Тор: Любовь и гром</td>
+          <td class="col-year">Конец 2025</td>
+          <td class="col-desc">Битва с Горром, Тор воспитывает приёмную дочь Любовь.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">38</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Человек-муравей: Квантомания</td>
+          <td class="col-year">2026 г.</td>
+          <td class="col-desc">Полномасштабное исследование цивилизации Квантового мира.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">39</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Стражи Галактики. Часть 3</td>
+          <td class="col-year">2026 г.</td>
+          <td class="col-desc">Финал оригинального состава Стражей, происхождение Ракеты.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">40</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Марвелы</td>
+          <td class="col-year">2026 г.</td>
+          <td class="col-desc">Кроссовер Кэрол Дэнверс, Моники Рамбо и Камалы Хан.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">41</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Дэдпул и Росомаха</td>
+          <td class="col-year">Вне времени</td>
+          <td class="col-desc">Прямое слияние миров Fox и КВМ через УВИ и Пустоту из «Локи».</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">42</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Капитан Америка: Дивный новый мир</td>
+          <td class="col-year">2026 г.</td>
+          <td class="col-desc">Сэм Уилсон в роли Кэпа, Президент Росс (Красный Халк), адамантий.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">43</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Громовержцы*</td>
+          <td class="col-year">2026 г.</td>
+          <td class="col-desc">Сбор антигероев де Фонтейн (Елена, Баки, Уокер) против Часового.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">44</td>
+          <td class="col-title"><span class="tag tag-series">Сериал</span>Сорвиголова: Рождённый заново</td>
+          <td class="col-year">2026 г.</td>
+          <td class="col-desc">Мэр Уилсон Фиск объявляет войну уличным линчевателям (1–2 сез.).</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">45</td>
+          <td class="col-title"><span class="tag tag-special">Спецвыпуск</span>Каратель: Последнее убийство</td>
+          <td class="col-year">2026 г.</td>
+          <td class="col-desc">Фрэнк Касл возвращается к активной охоте на фоне законов Фиска.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">46</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Человек-паук: Новый день</td>
+          <td class="col-year">2026 г.</td>
+          <td class="col-desc">Сольная уличная глава Питера Паркера в Нью-Йорке под властью Фиска.</td>
+        </tr>
+        <tr data-cat="multiverse">
+          <td class="col-check"><input type="checkbox" onchange="updateProgress()"></td>
+          <td class="col-num">47</td>
+          <td class="col-title"><span class="tag tag-movie">Фильм</span>Ф4: Первые шаги</td>
+          <td class="col-year">Альт. 1960-е</td>
+          <td class="col-desc">Дебют первой семьи Marvel перед переходом в ветку к «Судному дню».</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Подвал с правилами -->
+  <div class="footer-box">
+    <strong>⚠️ Правила просмотра сцен после титров:</strong><br>
+    • <strong>Капитан Марвел (№ 04):</strong> сцену после титров пропустите до момента перед «Мстителями: Финал» (№ 25).<br>
+    • <strong>Чёрная Вдова (№ 18):</strong> сцена после титров происходит на могиле Наташи — смотрите строго после «Финала» (№ 25).<br>
+    • <strong>Человек-муравей и Оса (№ 23):</strong> сцена после титров совпадает со Щелчком Таноса — смотрите после «Войны бесконечности» (№ 24).
+  </div>
+</div>
+
+<script>
+  // Загрузка состояния чекбоксов
+  document.addEventListener('DOMContentLoaded', () => {
+    const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
+    checkboxes.forEach((cb, index) => {
+      const saved = localStorage.getItem('mcu_item_' + index);
+      if (saved === 'true') {
+        cb.checked = true;
+        cb.closest('tr').classList.add('checked');
+      }
+    });
+    updateProgress();
+  });
+
+  // Обновление прогресс-бара и стилей
+  function updateProgress() {
+    const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
+    let checkedCount = 0;
+    checkboxes.forEach((cb, index) => {
+      if (cb.checked) {
+        checkedCount++;
+        cb.closest('tr').classList.add('checked');
+        localStorage.setItem('mcu_item_' + index, 'true');
+      } else {
+        cb.closest('tr').classList.remove('checked');
+        localStorage.setItem('mcu_item_' + index, 'false');
+      }
+    });
+
+    const total = checkboxes.length;
+    const percent = Math.round((checkedCount / total) * 100);
+    document.getElementById('progressBar').style.width = percent + '%';
+    document.getElementById('progressText').innerText = `${checkedCount} / ${total} (${percent}%)`;
+  }
+
+  // Фильтр категорий
+  function filterCategory(cat, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const rows = document.querySelectorAll('#mcuTable tbody tr');
+    rows.forEach(row => {
+      const rowCat = row.getAttribute('data-cat');
+      if (cat === 'all' || rowCat === cat) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
+  // Поиск
+  function searchProjects() {
+    const input = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#mcuTable tbody tr:not(.section-row)');
+
+    rows.forEach(row => {
+      const text = row.innerText.toLowerCase();
+      if (text.includes(input)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
